@@ -15,7 +15,7 @@ class NeuralArithmeticLogicUnitCell(nn.Module):
         self.out_dim = out_dim
         self.eps = 1e-8
 
-        self.G = Parameter(torch.Tensor(out_dim, in_dim))
+        self.G = Parameter(torch.zeros([out_dim, in_dim], dtype=torch.float))
         self.nac = NeuralAccumulatorCell(in_dim, out_dim)
         self.register_parameter('bias', None)
 

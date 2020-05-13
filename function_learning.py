@@ -3,6 +3,7 @@ import numpy as np
 
 import torch
 import torch.nn.functional as F
+from torch.optim import RMSprop
 
 from models import MLP, NAC, NALU
 
@@ -24,7 +25,7 @@ ARITHMETIC_FUNCTIONS = {
 
 
 def generate_data(num_train, num_test, dim, num_sum, fn, support):
-    data = torch.FloatTensor(dim).uniform_(*support).unsqueeze_(1)
+    data = torch.zeros([dim, 1], dtype=torch.float).uniform_(*support)
     X, y = [], []
     for i in range(num_train + num_test):
         idx_a = random.sample(range(dim), num_sum)
@@ -32,8 +33,8 @@ def generate_data(num_train, num_test, dim, num_sum, fn, support):
         a, b = data[idx_a].sum(), data[idx_b].sum()
         X.append([a, b])
         y.append(fn(a, b))
-    X = torch.FloatTensor(X)
-    y = torch.FloatTensor(y).unsqueeze_(1)
+    X = torch.tensor(X)
+    y = torch.tensor(y).unsqueeze_(1)
     indices = list(range(num_train + num_test))
     np.random.shuffle(indices)
     X_train, y_train = X[indices[num_test:]], y[indices[num_test:]]
@@ -42,6 +43,8 @@ def generate_data(num_train, num_test, dim, num_sum, fn, support):
 
 
 def train(model, optimizer, data, target, num_iters):
+    losses = []
+    meandiffs = []
     for i in range(1, num_iters + 1):
         out = model(data)
         loss = F.mse_loss(out, target)
@@ -49,10 +52,10 @@ def train(model, optimizer, data, target, num_iters):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if i % 1000 == 0:
-            print("\t{}/{}: loss: {:.7f} - mea: {:.7f}".format(
-                i + 1, num_iters, loss.item(), mea.item())
-            )
+        losses.append(loss.item())
+        meandiffs.append(mea.item())
+        print(f'\r epoch: [{i+1}/{num_iters}], loss: {loss.item()}, mean_diff: {mea.item()}', end='')
+    return losses, meandiffs
 
 
 def test(model, data, target):
@@ -98,7 +101,7 @@ def main():
         # others
         for net in models:
             print("\tTraining {}...".format(net.__str__().split("(")[0]))
-            optim = torch.optim.RMSprop(net.parameters(), lr=LEARNING_RATE)
+            optim = RMSprop(net.parameters(), lr=LEARNING_RATE)
             train(net, optim, X_train, y_train, NUM_ITERS)
             mse = test(net, X_test, y_test).mean().item()
             print("\t\tTest finished {}".format(mse))
