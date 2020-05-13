@@ -9,14 +9,14 @@ from torch.nn.parameter import Parameter
 
 
 class NeuralArithmeticLogicUnitCell(nn.Module):
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, in_dim, out_dim, device):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.eps = 1e-8
 
-        self.G = Parameter(torch.zeros([out_dim, in_dim], dtype=torch.float))
-        self.nac = NeuralAccumulatorCell(in_dim, out_dim)
+        self.G = Parameter(torch.zeros([out_dim, in_dim], dtype=torch.float, device=device))
+        self.nac = NeuralAccumulatorCell(in_dim, out_dim, device)
         self.register_parameter('bias', None)
 
         init.kaiming_uniform_(self.G, a=math.sqrt(5))
@@ -38,7 +38,7 @@ class NeuralArithmeticLogicUnitCell(nn.Module):
 
 
 class NALU(nn.Module):
-    def __init__(self, num_layers, in_dim, hidden_dim, out_dim):
+    def __init__(self, num_layers, in_dim, hidden_dim, out_dim, device):
         super().__init__()
         self.num_layers = num_layers
         self.in_dim = in_dim
@@ -51,6 +51,7 @@ class NALU(nn.Module):
                 NeuralArithmeticLogicUnitCell(
                     hidden_dim if i > 0 else in_dim,
                     hidden_dim if i < num_layers - 1 else out_dim,
+                    device
                 )
             )
         self.model = nn.Sequential(*layers)

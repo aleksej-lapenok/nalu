@@ -11,8 +11,9 @@ NORMALIZE = True
 NUM_LAYERS = 4
 HIDDEN_DIM = 4
 LEARNING_RATE = 1e-2
-NUM_ITERS = int(2e5)
+EPOCHS = int(2e5)
 RANGE = [0, 10]
+USE_CUDA = False
 ARITHMETIC_FUNCTIONS = {
     'add': lambda x, y: x + y,
     'sub': lambda x, y: x - y,
@@ -24,7 +25,7 @@ ARITHMETIC_FUNCTIONS = {
 }
 
 
-def generate_data(num_train, num_test, dim, num_sum, fn, support):
+def generate_data(num_train, num_test, dim, num_sum, fn, support, device):
     data = torch.zeros([dim, 1], dtype=torch.float).uniform_(*support)
     X, y = [], []
     for i in range(num_train + num_test):
@@ -39,7 +40,7 @@ def generate_data(num_train, num_test, dim, num_sum, fn, support):
     np.random.shuffle(indices)
     X_train, y_train = X[indices[num_test:]], y[indices[num_test:]]
     X_test, y_test = X[indices[:num_test]], y[indices[:num_test]]
-    return X_train, y_train, X_test, y_test
+    return X_train.to(device), y_train.to(device), X_test.to(device), y_test.to(device)
 
 
 def train(model, optimizer, data, target, num_iters):
@@ -65,12 +66,18 @@ def test(model, data, target):
 
 
 def main():
+    if USE_CUDA and torch.cuda.is_available():
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+
     models = [
         NALU(
             num_layers=NUM_LAYERS,
             in_dim=2,
             hidden_dim=HIDDEN_DIM,
-            out_dim=1
+            out_dim=1,
+            device=device
         ),
     ]
 
@@ -81,9 +88,10 @@ def main():
 
         # dataset
         X_train, y_train, X_test, y_test = generate_data(
-            num_train=500, num_test=50,
+            num_train=50000, num_test=5000,
             dim=100, num_sum=5, fn=fn,
             support=RANGE,
+            device=device
         )
 
         # random model
@@ -92,7 +100,7 @@ def main():
             net = MLP(
                 num_layers=NUM_LAYERS, in_dim=2,
                 hidden_dim=HIDDEN_DIM, out_dim=1,
-                activation='relu6',
+                activation='relu6', device=device
             )
             mse = test(net, X_test, y_test)
             random_mse.append(mse.mean().item())
@@ -102,7 +110,7 @@ def main():
         for net in models:
             print("\tTraining {}...".format(net.__str__().split("(")[0]))
             optim = RMSprop(net.parameters(), lr=LEARNING_RATE)
-            train(net, optim, X_train, y_train, NUM_ITERS)
+            train(net, optim, X_train, y_train, EPOCHS)
             mse = test(net, X_test, y_test).mean().item()
             print("\t\tTest finished {}".format(mse))
             results[fn_str].append(mse)

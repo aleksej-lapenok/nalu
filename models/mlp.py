@@ -5,7 +5,7 @@ from .utils import str2act
 
 
 class MLP(nn.Module):
-    def __init__(self, num_layers, in_dim, hidden_dim, out_dim, activation='relu'):
+    def __init__(self, num_layers, in_dim, hidden_dim, out_dim, device, activation='relu'):
         super().__init__()
         self.num_layers = num_layers
         self.in_dim = in_dim
@@ -21,10 +21,11 @@ class MLP(nn.Module):
                 self.layer(
                     hidden_dim if i > 0 else in_dim,
                     hidden_dim,
+                    device,
                     nonlin,
                 )
             )
-        layers.extend(self.layer(hidden_dim, out_dim, False))
+        layers.extend(self.layer(hidden_dim, out_dim, device, False))
 
         self.model = nn.Sequential(*layers)
 
@@ -36,15 +37,15 @@ class MLP(nn.Module):
                 bound = 1 / math.sqrt(fan_in)
                 nn.init.uniform_(m.bias, -bound, bound)
 
-    def layer(self, in_dim, out_dim, activation=True):
+    def layer(self, in_dim, out_dim, device, activation=True):
         if activation:
             return [
-                nn.Linear(in_dim, out_dim),
+                nn.Linear(in_dim, out_dim).to(device),
                 self.activation,
             ]
         else:
             return [
-                nn.Linear(in_dim, out_dim),
+                nn.Linear(in_dim, out_dim).to(device),
             ]
 
     def forward(self, x):
