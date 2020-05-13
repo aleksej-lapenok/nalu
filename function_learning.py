@@ -3,7 +3,6 @@ import numpy as np
 
 import torch
 import torch.nn.functional as F
-from torch.optim import RMSprop
 
 from models import MLP, NAC, NALU
 
@@ -88,7 +87,7 @@ def main():
 
         # dataset
         X_train, y_train, X_test, y_test = generate_data(
-            num_train=50000, num_test=5000,
+            num_train=5000, num_test=500,
             dim=100, num_sum=5, fn=fn,
             support=RANGE,
             device=device
@@ -109,27 +108,27 @@ def main():
         # others
         for net in models:
             print("\tTraining {}...".format(net.__str__().split("(")[0]))
-            optim = RMSprop(net.parameters(), lr=LEARNING_RATE)
+            optim = torch.optim.RMSprop(net.parameters(), lr=LEARNING_RATE)
             train(net, optim, X_train, y_train, EPOCHS)
             mse = test(net, X_test, y_test).mean().item()
             print("\t\tTest finished {}".format(mse))
             results[fn_str].append(mse)
 
-        print("\n---------------RESULTS------------------")
+    print("\n---------------RESULTS------------------")
 
-        print("Operation\tNALU")
-        for k, v in results.items():
-            print("{}\t".format(k), end='')
-            rand = results[k][0]
-            mses = [100.0 * x / rand for x in results[k][1:]]
-            if NORMALIZE:
-                for ms in mses:
-                    print("{:.3f}\t".format(ms), end='')
-                print()
-            else:
-                for ms in results[k][1:]:
-                    print("{:.3f}\t".format(ms), end='')
-                print()
+    print("Operation\tNALU")
+    for k, v in results.items():
+        print("{}\t".format(k), end='')
+        rand = results[k][0]
+        mses = [100.0 * x / rand for x in results[k][1:]]
+        if NORMALIZE:
+            for ms in mses:
+                print("{:.3f}\t".format(ms), end='')
+            print()
+        else:
+            for ms in results[k][1:]:
+                print("{:.3f}\t".format(ms), end='')
+            print()
 
 
 if __name__ == '__main__':
