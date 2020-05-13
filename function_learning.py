@@ -10,8 +10,9 @@ NORMALIZE = True
 NUM_LAYERS = 4
 HIDDEN_DIM = 4
 LEARNING_RATE = 1e-2
-NUM_ITERS = int(2e5)
+EPOCHS = int(2e5)
 RANGE = [0, 10]
+USE_CUDA = False
 ARITHMETIC_FUNCTIONS = {
     'add': lambda x, y: x + y,
     'sub': lambda x, y: x - y,
@@ -23,8 +24,8 @@ ARITHMETIC_FUNCTIONS = {
 }
 
 
-def generate_data(num_train, num_test, dim, num_sum, fn, support):
-    data = torch.FloatTensor(dim).uniform_(*support).unsqueeze_(1)
+def generate_data(num_train, num_test, dim, num_sum, fn, support, device):
+    data = torch.zeros([dim, 1], dtype=torch.float).uniform_(*support)
     X, y = [], []
     for i in range(num_train + num_test):
         idx_a = random.sample(range(dim), num_sum)
@@ -32,16 +33,18 @@ def generate_data(num_train, num_test, dim, num_sum, fn, support):
         a, b = data[idx_a].sum(), data[idx_b].sum()
         X.append([a, b])
         y.append(fn(a, b))
-    X = torch.FloatTensor(X)
-    y = torch.FloatTensor(y).unsqueeze_(1)
+    X = torch.tensor(X)
+    y = torch.tensor(y).unsqueeze_(1)
     indices = list(range(num_train + num_test))
     np.random.shuffle(indices)
     X_train, y_train = X[indices[num_test:]], y[indices[num_test:]]
     X_test, y_test = X[indices[:num_test]], y[indices[:num_test]]
-    return X_train, y_train, X_test, y_test
+    return X_train.to(device), y_train.to(device), X_test.to(device), y_test.to(device)
 
 
 def train(model, optimizer, data, target, num_iters):
+    losses = []
+    meandiffs = []
     for i in range(1, num_iters + 1):
         out = model(data)
         loss = F.mse_loss(out, target)
@@ -49,10 +52,10 @@ def train(model, optimizer, data, target, num_iters):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if i % 1000 == 0:
-            print("\t{}/{}: loss: {:.7f} - mea: {:.7f}".format(
-                i + 1, num_iters, loss.item(), mea.item())
-            )
+        losses.append(loss.item())
+        meandiffs.append(mea.item())
+        print(f'\r epoch: [{i+1}/{num_iters}], loss: {loss.item()}, mean_diff: {mea.item()}', end='')
+    return losses, meandiffs
 
 
 def test(model, data, target):
@@ -62,12 +65,18 @@ def test(model, data, target):
 
 
 def main():
+    if USE_CUDA and torch.cuda.is_available():
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+
     models = [
         NALU(
             num_layers=NUM_LAYERS,
             in_dim=2,
             hidden_dim=HIDDEN_DIM,
-            out_dim=1
+            out_dim=1,
+            device=device
         ),
     ]
 
@@ -81,6 +90,7 @@ def main():
             num_train=5000, num_test=500,
             dim=100, num_sum=5, fn=fn,
             support=RANGE,
+            device=device
         )
 
         # random model
@@ -89,7 +99,7 @@ def main():
             net = MLP(
                 num_layers=NUM_LAYERS, in_dim=2,
                 hidden_dim=HIDDEN_DIM, out_dim=1,
-                activation='relu6',
+                activation='relu6', device=device
             )
             mse = test(net, X_test, y_test)
             random_mse.append(mse.mean().item())
@@ -99,7 +109,7 @@ def main():
         for net in models:
             print("\tTraining {}...".format(net.__str__().split("(")[0]))
             optim = torch.optim.RMSprop(net.parameters(), lr=LEARNING_RATE)
-            train(net, optim, X_train, y_train, NUM_ITERS)
+            train(net, optim, X_train, y_train, EPOCHS)
             mse = test(net, X_test, y_test).mean().item()
             print("\t\tTest finished {}".format(mse))
             results[fn_str].append(mse)

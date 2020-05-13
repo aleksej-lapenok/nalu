@@ -7,13 +7,13 @@ from torch.nn.parameter import Parameter
 
 
 class NeuralAccumulatorCell(nn.Module):
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, in_dim, out_dim, device):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
 
-        self.W_hat = Parameter(torch.Tensor(out_dim, in_dim))
-        self.M_hat = Parameter(torch.Tensor(out_dim, in_dim))
+        self.W_hat = Parameter(torch.zeros([out_dim, in_dim], dtype=torch.float, device=device))
+        self.M_hat = Parameter(torch.zeros([out_dim, in_dim], dtype=torch.float, device=device))
 
         self.register_parameter('W_hat', self.W_hat)
         self.register_parameter('M_hat', self.M_hat)
