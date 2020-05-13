@@ -78,7 +78,7 @@ def main():
 
         # dataset
         X_train, y_train, X_test, y_test = generate_data(
-            num_train=500, num_test=50,
+            num_train=5000, num_test=500,
             dim=100, num_sum=5, fn=fn,
             support=RANGE,
         )
@@ -104,21 +104,21 @@ def main():
             print("\t\tTest finished {}".format(mse))
             results[fn_str].append(mse)
 
-        print("\n---------------RESULTS------------------")
+    print("\n---------------RESULTS------------------")
 
-        print("Operation\tNALU")
-        for k, v in results.items():
-            print("{}\t".format(k), end='')
-            rand = results[k][0]
-            mses = [100.0 * x / rand for x in results[k][1:]]
-            if NORMALIZE:
-                for ms in mses:
-                    print("{:.3f}\t".format(ms), end='')
-                print()
-            else:
-                for ms in results[k][1:]:
-                    print("{:.3f}\t".format(ms), end='')
-                print()
+    print("Operation\tNALU")
+    for k, v in results.items():
+        print("{}\t".format(k), end='')
+        rand = results[k][0]
+        mses = [100.0 * x / rand for x in results[k][1:]]
+        if NORMALIZE:
+            for ms in mses:
+                print("{:.3f}\t".format(ms), end='')
+            print()
+        else:
+            for ms in results[k][1:]:
+                print("{:.3f}\t".format(ms), end='')
+            print()
 
 
 if __name__ == '__main__':
