@@ -9,9 +9,11 @@ from models import MLP, NAC, NALU
 NORMALIZE = True
 NUM_LAYERS = 4
 HIDDEN_DIM = 4
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-3
 EPOCHS = int(2e5)
 RANGE = [0, 10]
+EXTRA_RANGE_MINUS = [-10, 0]
+EXTRA_RANGE_PLUS = [10, 20]
 USE_CUDA = False
 ARITHMETIC_FUNCTIONS = {
     'add': lambda x, y: x + y,
@@ -20,7 +22,8 @@ ARITHMETIC_FUNCTIONS = {
     'div': lambda x, y: x / y,
     'squared': lambda x, y: torch.pow(x, 2),
     'root': lambda x, y: torch.sqrt(x),
-    'log': lambda x, y: torch.log(x)
+    'log': lambda x, y: torch.log(x),
+    # 'exp': lambda x, y: torch.exp(x)
 }
 
 
@@ -93,6 +96,19 @@ def main():
             device=device
         )
 
+        _, _, extra_plus_x, extra_plus_y = generate_data(
+            num_train=0, num_test=500,
+            dim=100, num_sum=5, fn=fn,
+            support=EXTRA_RANGE_PLUS,
+            device=device
+        )
+        _, _, extra_minus_x, extra_minus_y = generate_data(
+            num_train=0, num_test=500,
+            dim=100, num_sum=5, fn=fn,
+            support=EXTRA_RANGE_PLUS,
+            device=device
+        )
+
         # random model
         random_mse = []
         for i in range(100):
@@ -108,11 +124,20 @@ def main():
         # others
         for net in models:
             print("\tTraining {}...".format(net.__str__().split("(")[0]))
-            optim = torch.optim.RMSprop(net.parameters(), lr=LEARNING_RATE)
+            optim = torch.optim.RMSprop(net.parameters(), lr=LEARNING_RATE, centered=True)
             train(net, optim, X_train, y_train, EPOCHS)
             mse = test(net, X_test, y_test).mean().item()
             print("\t\tTest finished {}".format(mse))
             results[fn_str].append(mse)
+
+            mse = test(net, extra_plus_x, extra_plus_y).mean().item()
+            print(f"\t\tTest finished (extra plus) {mse}")
+            results[fn_str].append(mse)
+
+            mse = test(net, extra_minus_x, extra_minus_y).mean().item()
+            print(f"\t\tTest finished (extra minus) {mse}")
+            results[fn_str].append(mse)
+
 
     print("\n---------------RESULTS------------------")
 
